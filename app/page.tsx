@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type View = "dashboard" | "projects" | "analytics" | "security";
 type ProjectStatus = "Online" | "Em progresso" | "Planejamento";
@@ -8,7 +8,7 @@ type ProjectStatus = "Online" | "Em progresso" | "Planejamento";
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: "◫" },
   { id: "projects", label: "Projetos", icon: "◇" },
-  { id: "analytics", label: "Analytics", icon: "⌁" },
+  { id: "analytics", label: "Análises", icon: "⌁" },
   { id: "security", label: "Segurança", icon: "⬡" },
 ];
 
@@ -47,7 +47,7 @@ function Sparkline({ values }: { values: number[] }) {
   const area = `0,${height} ${points} ${width},${height}`;
 
   return (
-    <svg className="lineChart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfico de acessos">
+    <svg className="lineChart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Evolução mensal de acessos em dados demonstrativos">
       <defs>
         <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#d73562" stopOpacity=".28" />
@@ -70,7 +70,7 @@ function Sparkline({ values }: { values: number[] }) {
 function MiniBars() {
   const bars = [46, 62, 52, 76, 68, 88, 73, 96, 80, 90, 74, 100];
   return (
-    <div className="miniBars">
+    <div className="miniBars" aria-hidden="true">
       {bars.map((height, index) => <span key={index} style={{ height: `${height}%` }} />)}
     </div>
   );
@@ -83,6 +83,8 @@ export default function Home() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [securityScanning, setSecurityScanning] = useState(false);
   const [securityScore, setSecurityScore] = useState(94);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const scanTimerRef = useRef<number | null>(null);
 
   const filteredProjects = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -92,6 +94,29 @@ export default function Home() {
     );
   }, [search]);
 
+  useEffect(() => {
+    function closeNotifications(event: PointerEvent) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setNotificationsOpen(false);
+        setSidebarOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeNotifications);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeNotifications);
+      document.removeEventListener("keydown", closeOnEscape);
+      if (scanTimerRef.current) window.clearTimeout(scanTimerRef.current);
+    };
+  }, []);
+
   function openView(next: View) {
     setView(next);
     setSidebarOpen(false);
@@ -99,7 +124,8 @@ export default function Home() {
 
   function runSecurityScan() {
     setSecurityScanning(true);
-    window.setTimeout(() => {
+    if (scanTimerRef.current) window.clearTimeout(scanTimerRef.current);
+    scanTimerRef.current = window.setTimeout(() => {
       setSecurityScore(96);
       setSecurityScanning(false);
     }, 1500);
@@ -107,7 +133,7 @@ export default function Home() {
 
   return (
     <main className="appShell">
-      <aside className={`sidebar ${sidebarOpen ? "sidebarOpen" : ""}`}>
+      <aside className={`sidebar ${sidebarOpen ? "sidebarOpen" : ""}`} aria-label="Menu do Nexus">
         <div className="brandRow">
           <div className="brandMark">N</div>
           <div>
@@ -127,7 +153,7 @@ export default function Home() {
             >
               <span className="navIcon">{item.icon}</span>
               {item.label}
-              {item.id === "security" && <i className="navBadge">96</i>}
+              {item.id === "security" && <i className="navBadge">{securityScore}</i>}
             </button>
           ))}
         </nav>
@@ -136,8 +162,8 @@ export default function Home() {
           <div className="serverStatus">
             <span className="liveDot" />
             <div>
-              <strong>Sistemas operacionais</strong>
-              <small>Todos os serviços online</small>
+              <strong>Ambiente demonstrativo</strong>
+              <small>Dados locais e simulados</small>
             </div>
           </div>
 
@@ -163,45 +189,46 @@ export default function Home() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar projetos, métricas..."
-              aria-label="Buscar"
+              placeholder="Buscar projetos"
+              aria-label="Buscar projetos"
             />
-            <kbd>⌘ K</kbd>
           </div>
 
           <div className="topbarActions">
-            <div className="notificationWrap">
+            <div className="notificationWrap" ref={notificationRef}>
               <button
                 type="button"
                 className="iconButton"
                 onClick={() => setNotificationsOpen((open) => !open)}
                 aria-label="Notificações"
+                aria-expanded={notificationsOpen}
+                aria-controls="notification-panel"
               >
                 ◌
                 <span className="notificationDot" />
               </button>
               {notificationsOpen && (
-                <div className="notificationPanel">
+                <div className="notificationPanel" id="notification-panel">
                   <div className="notificationHead">
                     <strong>Notificações</strong>
                     <span>3 novas</span>
                   </div>
                   <div className="notificationItem">
                     <i className="noticeAccent" />
-                    <div><strong>Deploy concluído</strong><small>Nexus está em produção.</small></div>
+                    <div><strong>Deploy concluído</strong><small>Evento incluído nos dados de exemplo.</small></div>
                   </div>
                   <div className="notificationItem">
                     <i className="noticeOk" />
-                    <div><strong>Security scan</strong><small>Nenhum risco crítico encontrado.</small></div>
+                    <div><strong>Análise simulada</strong><small>Nenhum risco crítico nos dados de exemplo.</small></div>
                   </div>
                   <div className="notificationItem">
                     <i />
-                    <div><strong>Analytics</strong><small>Tráfego cresceu 14,2% este mês.</small></div>
+                    <div><strong>Análises</strong><small>A série de exemplo foi atualizada.</small></div>
                   </div>
                 </div>
               )}
             </div>
-            <button className="primaryAction" onClick={() => openView("projects")}>+ Novo projeto</button>
+            <button className="primaryAction" type="button" onClick={() => openView("projects")}>Ver projetos</button>
           </div>
         </header>
 
@@ -211,10 +238,10 @@ export default function Home() {
               <div className="pageHeading">
                 <div>
                   <p className="eyebrow">VISÃO GERAL</p>
-                  <h1>Bom dia, Pedro.</h1>
-                  <p>Acompanhe o que está acontecendo nos seus projetos.</p>
+                  <h1>Painel de projetos</h1>
+                  <p>Visão consolidada de métricas, andamento e eventos do ambiente de demonstração.</p>
                 </div>
-                <div className="dateChip"><span>●</span> Atualizado agora</div>
+                <div className="dateChip">Dados demonstrativos</div>
               </div>
 
               <section className="metricGrid">
@@ -261,7 +288,7 @@ export default function Home() {
                   <div className="panelHead">
                     <div>
                       <span className="panelLabel">SEGURANÇA</span>
-                      <h2>Health score</h2>
+                      <h2>Índice de segurança</h2>
                     </div>
                     <button className="ghostButton" onClick={() => openView("security")}>Detalhes ↗</button>
                   </div>
@@ -326,20 +353,20 @@ export default function Home() {
             <>
               <div className="pageHeading">
                 <div>
-                  <p className="eyebrow">WORKSPACE</p>
-                  <h1>Projetos.</h1>
-                  <p>Organize aplicações, acompanhe progresso e saúde dos deployments.</p>
+                  <p className="eyebrow">PROJETOS</p>
+                  <h1>Projetos</h1>
+                  <p>Acompanhe progresso, status e índice de qualidade dos itens cadastrados.</p>
                 </div>
-                <button className="primaryAction large">+ Criar projeto</button>
+                <span className="demoBadge">Dados demonstrativos</span>
               </div>
 
               <div className="projectToolbar">
-                <div className="projectSearch"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filtrar projetos..." /></div>
+                <div className="projectSearch"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filtrar projetos" aria-label="Filtrar projetos" /></div>
                 <div className="toolbarStats"><span><b>{projects.length}</b> total</span><span><b>2</b> ativos</span><span><b>1</b> planejamento</span></div>
               </div>
 
               <section className="projectsTable panel">
-                <div className="tableHead"><span>Projeto</span><span>Status</span><span>Progresso</span><span>Health</span><span>Atualizado</span></div>
+                <div className="tableHead"><span>Projeto</span><span>Status</span><span>Progresso</span><span>Qualidade</span><span>Atualizado</span></div>
                 {filteredProjects.map((project) => (
                   <div className="tableRow" key={project.name}>
                     <div className="tableProject"><span className="projectInitial">{project.name.charAt(0)}</span><div><strong>{project.name}</strong><small>{project.category}</small></div></div>
@@ -357,17 +384,17 @@ export default function Home() {
             <>
               <div className="pageHeading">
                 <div>
-                  <p className="eyebrow">ANALYTICS</p>
-                  <h1>Performance.</h1>
+                  <p className="eyebrow">ANÁLISES</p>
+                  <h1>Desempenho</h1>
                   <p>Métricas simuladas de uso, crescimento e estabilidade do produto.</p>
                 </div>
                 <div className="dateChip">01 Jul — 08 Ago</div>
               </div>
 
               <section className="metricGrid">
-                <article className="metricCard"><div className="metricTop"><span>Page views</span><i>◫</i></div><strong>84.2K</strong><div className="metricFooter"><b>+14.2%</b><span>crescimento</span></div></article>
-                <article className="metricCard"><div className="metricTop"><span>Sessões</span><i>◎</i></div><strong>31.8K</strong><div className="metricFooter"><b>+9.7%</b><span>crescimento</span></div></article>
-                <article className="metricCard"><div className="metricTop"><span>Bounce rate</span><i>↘</i></div><strong>21<span>%</span></strong><div className="metricFooter"><b>-4.1%</b><span>melhoria</span></div></article>
+                <article className="metricCard"><div className="metricTop"><span>Visualizações</span><i>◫</i></div><strong>84,2 mil</strong><div className="metricFooter"><b>+14,2%</b><span>crescimento</span></div></article>
+                <article className="metricCard"><div className="metricTop"><span>Sessões</span><i>◎</i></div><strong>31,8 mil</strong><div className="metricFooter"><b>+9,7%</b><span>crescimento</span></div></article>
+                <article className="metricCard"><div className="metricTop"><span>Taxa de rejeição</span><i>↘</i></div><strong>21<span>%</span></strong><div className="metricFooter"><b>-4,1%</b><span>melhoria</span></div></article>
                 <article className="metricCard"><div className="metricTop"><span>Tempo médio</span><i>◷</i></div><strong>4:38</strong><div className="metricFooter"><b>+32s</b><span>por sessão</span></div></article>
               </section>
 
@@ -380,7 +407,7 @@ export default function Home() {
                 <article className="panel sourcePanel">
                   <div className="panelHead"><div><span className="panelLabel">ORIGEM</span><h2>Canais</h2></div></div>
                   <div className="sourceList">
-                    {[["Direto", 42], ["Busca orgânica", 31], ["Social", 18], ["Referral", 9]].map(([name, value]) => (
+                    {[["Direto", 42], ["Busca orgânica", 31], ["Social", 18], ["Referências", 9]].map(([name, value]) => (
                       <div key={name as string}><div><strong>{name}</strong><span>{value}%</span></div><div className="progressTrack"><i style={{ width: `${value}%` }} /></div></div>
                     ))}
                   </div>
@@ -394,12 +421,12 @@ export default function Home() {
             <>
               <div className="pageHeading">
                 <div>
-                  <p className="eyebrow">SECURITY CENTER</p>
-                  <h1>Segurança.</h1>
-                  <p>Visão demonstrativa de postura de segurança e boas práticas web.</p>
+                  <p className="eyebrow">CENTRAL DE SEGURANÇA</p>
+                  <h1>Segurança</h1>
+                  <p>Leitura simulada de controles web para demonstrar a interface. Nenhuma análise real é executada.</p>
                 </div>
                 <button className="primaryAction large" onClick={runSecurityScan} disabled={securityScanning}>
-                  {securityScanning ? "Analisando..." : "Executar scan"}
+                  {securityScanning ? "Simulando análise..." : "Simular nova análise"}
                 </button>
               </div>
 
@@ -408,7 +435,7 @@ export default function Home() {
                   <div className="scoreRing large" style={{ "--score": `${securityScore * 3.6}deg` } as React.CSSProperties}>
                     <div><strong>{securityScore}</strong><span>/100</span></div>
                   </div>
-                  <div><span className="panelLabel">SECURITY SCORE</span><h2>{securityScore >= 95 ? "Excelente" : "Muito bom"}</h2><p>Última análise: agora · Nenhum risco crítico encontrado.</p></div>
+                  <div><span className="panelLabel">ÍNDICE DE SEGURANÇA</span><h2>{securityScore >= 95 ? "Excelente" : "Muito bom"}</h2><p>Resultado calculado a partir dos dados demonstrativos desta tela.</p></div>
                 </article>
 
                 <article className="panel riskCard">
@@ -418,7 +445,7 @@ export default function Home() {
               </section>
 
               <section className="panel checksPanel">
-                <div className="panelHead"><div><span className="panelLabel">WEB SECURITY</span><h2>Controles verificados</h2></div><span className="muted">Ambiente demonstrativo</span></div>
+                <div className="panelHead"><div><span className="panelLabel">SEGURANÇA WEB</span><h2>Controles da amostra</h2></div><span className="muted">Sem varredura real</span></div>
                 <div className="securityTable">
                   {[
                     ["HTTPS / TLS", "TLS 1.3 ativo", "Aprovado"],

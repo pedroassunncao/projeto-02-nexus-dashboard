@@ -1,42 +1,58 @@
 # Nexus Dashboard — Projeto 02
 
-Aplicação SaaS demonstrativa criada para o portfólio de Pedro Assunção.
+Interface SaaS demonstrativa criada para o portfólio de Pedro Assunção. O projeto concentra projetos, métricas, eventos e controles de segurança em um painel responsivo.
 
-## O que tem
+[Demonstração](https://projeto-02-nexus-dashboard.vercel.app/)
 
-- Next.js + TypeScript
-- Dashboard responsivo
-- Navegação funcional entre Dashboard, Projetos, Analytics e Segurança
-- Gráficos feitos em SVG/CSS sem dependências extras
-- Busca de projetos
-- Painel de notificações
-- Security score e scan demonstrativo
-- Tabelas, estados, métricas e atividades simuladas
-- Interface dark com identidade vinho
+## O que pode ser explorado
 
-> Os dados exibidos são fictícios e existem apenas para demonstração de interface e frontend.
+- navegação entre visão geral, projetos, análises e segurança;
+- busca e filtragem de projetos;
+- painel de notificações com fechamento por clique externo ou tecla Escape;
+- gráficos em SVG e CSS, sem biblioteca de visualização externa;
+- tabela responsiva, indicadores de progresso e estados de status;
+- simulação explícita de uma análise de segurança;
+- navegação para telas menores por menu lateral.
 
-## Como rodar
+## Dados demonstrativos
 
-Abra o terminal dentro desta pasta e execute:
+Todos os projetos, números, eventos e percentuais são fictícios. O botão de análise altera apenas o estado local da interface; ele não inspeciona sites, servidores ou dependências.
 
-```bash
+## Tecnologias
+
+- Next.js 16 e React 19;
+- TypeScript;
+- CSS;
+- SVG acessível para os gráficos.
+
+## Executar localmente
+
+Requer Node.js 20.9 ou mais recente.
+
+~~~bash
 npm install
 npm run dev
-```
+~~~
 
-Depois abra:
+Acesse http://localhost:3000.
 
-```text
-http://localhost:3000
-```
+Para definir a URL usada nos metadados, copie .env.example para .env.local e ajuste NEXT_PUBLIC_SITE_URL.
+
+## Verificação
+
+~~~bash
+npm run check
+npm run build
+~~~
 
 ## Estrutura
 
-```text
+~~~text
 app/
-  icon.svg
-  layout.tsx
-  page.tsx
-  globals.css
-```
+  globals.css   # sistema visual e responsividade
+  layout.tsx    # metadados
+  page.tsx      # dados, estados e telas do dashboard
+public/
+  og.png        # imagem de compartilhamento
+next.config.ts  # configuração e headers HTTP
+~~~
